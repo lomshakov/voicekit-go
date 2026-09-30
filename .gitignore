@@ -1,0 +1,26 @@
+# Build output
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test output
+*.test
+*.out
+coverage.txt
+
+# Go workspace files
+go.work
+go.work.sum
+
+# IDE / user settings
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

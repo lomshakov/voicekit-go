@@ -1,0 +1,58 @@
+name: Publish to the Go module proxy
+
+# Go has no separate registry: a module is published by pushing a semver tag.
+# proxy.golang.org (and pkg.go.dev) index it on the first request, so this
+# workflow validates the tag, warms the proxy cache and cuts a GitHub release.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+
+      - name: Validate the tag
+        run: |
+          if ! printf '%s' "${GITHUB_REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "Tag ${GITHUB_REF_NAME} is not a semver version (expected vX.Y.Z)."
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Resolve the module path
+        id: mod
+        run: echo "path=$(go list -m)" >> "$GITHUB_OUTPUT"
+
+      - name: Warm the Go module proxy
+        run: |
+          module="${{ steps.mod.outputs.path }}"
+          version="${GITHUB_REF_NAME}"
+          curl -fsS "https://proxy.golang.org/${module}/@v/${version}.info" >/dev/null
+          workdir="$(mktemp -d)"
+          cd "${workdir}"
+          go mod init proxycheck >/dev/null
+          go get "${module}@${version}"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
