@@ -43,7 +43,7 @@ const (
 	DefaultBaseURL = "https://ttsapi.ru"
 
 	// Version is the SDK release version.
-	Version = "0.4.0"
+	Version = "0.5.0"
 
 	defaultTimeout = 120 * time.Second
 )
